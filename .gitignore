@@ -56,7 +56,8 @@ supabase/signing_keys.json
 # pacote exportado para estudantes
 /dist-aluno/
 
-# banco de dados local / dumps
+# banco de dados local / dumps e backups (podem conter dados de usuários)
+/backups/
 *.db
 *.sqlite
 *.dump

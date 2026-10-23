@@ -1,0 +1,4 @@
+﻿ID requisito;Descrição resumida;Tipo (RF/RN/RNF);Módulo / tela;Prioridade de teste;Caso(s) de teste;Técnica;Situação (Passou/Falhou/Bloqueado/Não executado);Evidência (arquivo);Falha relacionada;Observações
+RF-08;Abrir chamado para um equipamento;RF;Chamados > Abrir chamado;Alta;CT-001;Partição de equivalência;;;;Exemplo de preenchimento: substitua pelos seus casos
+RN-CH-02;;RN;;;;;;;;
+RN-CH-01;;RN;;;;;;;;

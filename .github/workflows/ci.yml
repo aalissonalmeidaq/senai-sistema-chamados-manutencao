@@ -1,0 +1,84 @@
+# Integração contínua
+# 1) qualidade: lint, verificação de tipos, testes unitários e build
+# 2) banco-e-e2e: Supabase local (Docker do runner), testes pgTAP,
+#    testes de integração (RLS via API) e testes E2E no navegador
+# Nenhum segredo é necessário: tudo roda contra o Supabase LOCAL do runner.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  qualidade:
+    name: Lint, tipos, testes unitários e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  banco-e-e2e:
+    name: Banco (pgTAP), integração e E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: qualidade
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - name: Preparar ambiente local (Supabase + .env.local)
+        run: npm run setup:local
+
+      - name: Testes do banco (pgTAP)
+        run: npm run db:test
+
+      - name: Testes de integração (RLS via API)
+        run: npm run test:integration
+
+      - name: Recriar banco para os testes E2E
+        run: npm run db:reset
+
+      - name: Instalar navegador do Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        run: npm run build
+
+      - name: Testes E2E
+        run: npm run test:e2e
+
+      - name: Relatório do Playwright
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorio-playwright
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Parar Supabase
+        if: always()
+        run: npm run db:stop
