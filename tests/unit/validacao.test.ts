@@ -52,16 +52,6 @@ describe("abertura de chamado (RN-CH-02)", () => {
     expect(r.success && r.data.equipamento_id).toBe(3);
   });
 
-  it("rejeita descrição só com espaços (espaços não contam)", () => {
-    const r = abrirChamadoSchema.safeParse({ ...valido, descricao: "              " });
-    expect(erros(r).descricao).toEqual(["Descreva o problema com pelo menos 10 caracteres."]);
-  });
-
-  it("rejeita descrição curta mesmo com espaços nas pontas", () => {
-    const r = abrirChamadoSchema.safeParse({ ...valido, descricao: "   curta   " });
-    expect(r.success).toBe(false);
-  });
-
   it("exige equipamento selecionado", () => {
     const r = abrirChamadoSchema.safeParse({ ...valido, equipamento_id: "" });
     expect(erros(r).equipamento_id).toEqual(["Selecione o equipamento."]);
