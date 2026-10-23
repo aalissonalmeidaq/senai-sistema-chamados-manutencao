@@ -31,7 +31,7 @@ defeitos e fazer reteste e regressão.
 
 ```text
  Test Files  5 passed (5)
-      Tests  56 passed (56)
+      Tests  58 passed (58)      ← os números variam conforme a versão
 ```
 
 Uma falha mostra o nome do teste, o valor esperado (`Expected`) e o obtido (`Received`).

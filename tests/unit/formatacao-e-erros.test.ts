@@ -47,6 +47,12 @@ describe("tradução de erros do banco", () => {
     ).toBe("Já existe um equipamento com este código.");
   });
 
+  it("traduz a restrição de técnico obrigatório", () => {
+    expect(
+      traduzirErro({ code: "23514", message: 'violates check constraint "chamados_tecnico_obrigatorio"' }),
+    ).toBe("Chamado em atendimento, aguardando ou resolvido precisa de técnico responsável.");
+  });
+
   it("traduz falta de permissão", () => {
     expect(traduzirErro({ code: "42501", message: "permission denied" })).toBe("Você não tem permissão para esta operação.");
   });
