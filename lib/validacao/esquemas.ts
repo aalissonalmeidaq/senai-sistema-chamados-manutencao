@@ -79,6 +79,7 @@ export const abrirChamadoSchema = z.object({
     .max(120, "Título: no máximo 120 caracteres."),
   descricao: z
     .string()
+    .trim()
     .min(10, "Descreva o problema com pelo menos 10 caracteres.")
     .max(2000, "Descrição: no máximo 2000 caracteres."),
   categoria: z.enum(CATEGORIAS_CHAMADO, { error: "Selecione a categoria." }),
