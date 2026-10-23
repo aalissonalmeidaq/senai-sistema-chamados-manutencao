@@ -10,7 +10,7 @@ import {
   mudarStatusChamadoSchema,
   triagemSchema,
 } from "@/lib/validacao/esquemas";
-import { podeComentar, podeFazerTriagem, validarTransicaoChamado } from "@/lib/regras/chamados";
+import { exigeTecnico, podeComentar, podeFazerTriagem, validarTransicaoChamado } from "@/lib/regras/chamados";
 import { STATUS_ORDEM_ATIVOS } from "@/lib/regras/ordens";
 import { ehEquipe } from "@/lib/regras/permissoes";
 import { ROTULO_STATUS_CHAMADO } from "@/lib/dominio/rotulos";
@@ -56,6 +56,11 @@ export async function salvarTriagem(id: number, _estado: EstadoFormulario, formD
   if (!chamado) return falha("Chamado não encontrado.");
   if (!podeFazerTriagem(chamado.status, usuario.papel)) {
     return falha(`A triagem não pode ser alterada com o chamado ${ROTULO_STATUS_CHAMADO[chamado.status].toLowerCase()}.`);
+  }
+  if (!dados.data.tecnico_id && exigeTecnico(chamado.status)) {
+    return falha(
+      `Um chamado ${ROTULO_STATUS_CHAMADO[chamado.status].toLowerCase()} precisa de técnico responsável. Escolha um técnico.`,
+    );
   }
 
   const { error } = await supabase.from("chamados").update(dados.data).eq("id", id);

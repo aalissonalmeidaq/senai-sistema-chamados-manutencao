@@ -13,6 +13,7 @@ const MENSAGENS_RESTRICAO: Record<string, string> = {
   equipamentos_codigo_unico: "Já existe um equipamento com este código.",
   equipamentos_codigo_formato: "Use o formato AAA-0000 no código, por exemplo INF-0001.",
   ordens_uma_ativa_por_chamado: "Este chamado já possui uma ordem de manutenção ativa.",
+  chamados_tecnico_obrigatorio: "Chamado em atendimento, aguardando ou resolvido precisa de técnico responsável.",
 };
 
 export const MENSAGEM_ERRO_GENERICO = "Não foi possível concluir a operação. Tente novamente.";

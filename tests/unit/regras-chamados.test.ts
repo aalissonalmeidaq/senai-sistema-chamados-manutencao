@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  exigeTecnico,
   podeComentar,
   podeCriarOrdem,
   podeFazerTriagem,
@@ -112,6 +113,12 @@ describe("ações disponíveis por papel", () => {
     expect(podeFazerTriagem("em_triagem", "tecnico")).toBe(true);
     expect(podeFazerTriagem("em_triagem", "solicitante")).toBe(false);
     expect(podeFazerTriagem("encerrado", "administrador")).toBe(false);
+  });
+
+  it("RN-CH-04 — status que exigem técnico responsável", () => {
+    expect(["aberto", "em_triagem", "em_atendimento", "aguardando", "resolvido", "encerrado"].filter((s) =>
+      exigeTecnico(s as never),
+    )).toEqual(["em_atendimento", "aguardando", "resolvido"]);
   });
 
   it("comentários bloqueados apenas em chamado encerrado", () => {
