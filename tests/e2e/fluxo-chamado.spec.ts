@@ -146,4 +146,11 @@ test("OC-03: exportar a lista filtrada em CSV respeitando permissões", async ({
   const csvSolicitante = (await resposta.text()).replace("\uFEFF", "").trim().split("\r\n").slice(1);
   expect(csvSolicitante.length).toBeGreaterThan(0);
   expect(csvSolicitante.every((l) => l.includes(";Daniela Souza;"))).toBe(true);
+test("triagem: remover o técnico de chamado em atendimento mostra mensagem clara", async ({ page }) => {
+  await entrar(page, "tecnico1@example.com");
+  await page.goto("/chamados/2"); // "Ar-condicionado pingando água", em atendimento no seed
+  const triagem = page.getByRole("form", { name: "Triagem do chamado" });
+  await triagem.getByLabel("Técnico responsável").selectOption({ label: "Não atribuído" });
+  await triagem.getByRole("button", { name: "Salvar triagem" }).click();
+  await expect(triagem.getByRole("alert")).toContainText("precisa de técnico responsável");
 });
