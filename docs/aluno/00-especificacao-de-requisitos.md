@@ -46,6 +46,7 @@ feito. O solicitante acompanha o andamento e confirma a solução.
 | RF-17 | Listar ordens e filtrar por status e tipo. | Equipe |
 | RF-18 | Ver painel com totais de equipamentos, chamados por status e prioridade e ordens em andamento. | Todos |
 | RF-19 | Consultar o teste de fumaça `/api/saude`, que informa se aplicação e banco estão respondendo. | Qualquer pessoa |
+| RF-20 | Exportar em CSV (para planilha) a lista de chamados com os filtros aplicados, respeitando o que cada usuário pode ver. | Todos (solicitante só os seus) |
 
 ## 3. Regras de negócio (RN)
 

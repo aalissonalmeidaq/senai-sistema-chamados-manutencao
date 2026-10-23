@@ -10,7 +10,7 @@ conseguem ver o diff do defeito.
 | --- | --- | --- | --- | --- |
 | OC-01 | Corretiva — validação/fluxo de chamado | `ocorrencia/OC-01-descricao-chamado` | [enunciados/OC-01.md](ocorrencias/enunciados/OC-01.md) | [OC-01-solucao.md](ocorrencias/OC-01-solucao.md) · branch `referencia/OC-01-correcao` |
 | OC-02 | Corretiva — transição/integridade de ordem | `ocorrencia/OC-02-conclusao-ordem` | [enunciados/OC-02.md](ocorrencias/enunciados/OC-02.md) | [OC-02-solucao.md](ocorrencias/OC-02-solucao.md) · branch `referencia/OC-02-correcao` |
-| OC-03 | Evolutiva — relatório/interface | `main` (sem defeito) | [enunciados/OC-03.md](ocorrencias/enunciados/OC-03.md) | [OC-03-solucao.md](ocorrencias/OC-03-solucao.md) · branch `referencia/OC-03-exportacao-csv` |
+| OC-03 | Evolutiva — relatório/interface | tag `v1.0-base` (a `main` já contém a solução) | [enunciados/OC-03.md](ocorrencias/enunciados/OC-03.md) | [OC-03-solucao.md](ocorrencias/OC-03-solucao.md) · branch `referencia/OC-03-exportacao-csv` |
 
 Patches para consulta: [ocorrencias/patches/](ocorrencias/patches/) (`*-defeito.patch` = o que foi inserido;
 `*-correcao.patch`/`*-referencia.patch` = solução).
@@ -41,7 +41,8 @@ Equipes mais rápidas podem receber a ocorrência seguinte; equipes com dificuld
    projeto reaproveita os mesmos contêineres. Oriente a rodar `npm run db:reset` na pasta nova (as migrações
    da OC-02 são diferentes das da `main`).
 
-Para a **OC-03**, entregue o pacote da `main` (ou a equipe continua no próprio repositório) e o enunciado.
+Para a **OC-03**, entregue o pacote da tag `v1.0-base` (a `main` já tem a exportação CSV desde a mesclagem
+dos PRs #1–#5): `npm run student:export -- --ref v1.0-base --nome sistema-chamados-oc03 --substituir`.
 
 ## Como restaurar o estado inicial
 
