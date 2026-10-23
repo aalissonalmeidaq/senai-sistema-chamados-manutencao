@@ -152,7 +152,7 @@ immutable
 set search_path = ''
 as $$
   select case
-    when de = 'planejada'   and para in ('em_execucao', 'cancelada') then true
+    when de = 'planejada'   and para in ('em_execucao', 'concluida', 'cancelada') then true
     when de = 'em_execucao' and para in ('concluida', 'cancelada')   then true
     else false
   end;

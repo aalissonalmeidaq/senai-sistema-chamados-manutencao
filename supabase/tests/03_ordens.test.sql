@@ -1,7 +1,7 @@
 -- Testes de ordens de manutenção: criação, transições, integridade e efeito no equipamento.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(17);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('d0000000-0000-4000-8000-000000000001', 'om.tecnico@example.com', '{"nome":"Técnico OM"}'),
@@ -58,9 +58,6 @@ select throws_ok(
   $$insert into public.ordens_manutencao (chamado_id, tipo, responsavel_id)
     values (pg_temp.ch(), 'preventiva', 'd0000000-0000-4000-8000-000000000001')$$,
   '23505', null, 'só pode haver uma ordem ativa por chamado');
-select throws_like(
-  $$select public.alterar_status_ordem(pg_temp.om(), 'concluida')$$,
-  '%Transição de status da ordem inválida: Planejada → Concluída%', 'ordem planejada não pode ser concluída sem execução');
 
 select lives_ok($$select public.alterar_status_ordem(pg_temp.om(), 'em_execucao')$$, 'planejada → em execução');
 select isnt((select iniciada_em from public.ordens_manutencao where id = pg_temp.om()), null, 'data de início registrada');
