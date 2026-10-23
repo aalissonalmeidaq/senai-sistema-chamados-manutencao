@@ -1,7 +1,7 @@
 -- Testes de ordens de manutenção: criação, transições, integridade e efeito no equipamento.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(19);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('d0000000-0000-4000-8000-000000000001', 'om.tecnico@example.com', '{"nome":"Técnico OM"}'),
@@ -59,6 +59,11 @@ select throws_ok(
     values (pg_temp.ch(), 'preventiva', 'd0000000-0000-4000-8000-000000000001')$$,
   '23505', null, 'só pode haver uma ordem ativa por chamado');
 
+-- Regressão OC-02
+select throws_like(
+  $$select public.alterar_status_ordem(pg_temp.om(), 'concluida')$$,
+  '%Transição de status da ordem inválida: Planejada → Concluída%', 'ordem planejada não pode ser concluída sem execução');
+
 select lives_ok($$select public.alterar_status_ordem(pg_temp.om(), 'em_execucao')$$, 'planejada → em execução');
 select isnt((select iniciada_em from public.ordens_manutencao where id = pg_temp.om()), null, 'data de início registrada');
 select is(pg_temp.estado(), 'em_manutencao', 'equipamento passa para "em manutenção"');
@@ -80,6 +85,8 @@ select throws_like(
 
 select lives_ok($$select public.alterar_status_ordem(pg_temp.om(), 'concluida')$$, 'em execução → concluída');
 select is(pg_temp.estado(), 'disponivel', 'equipamento volta para "disponível" ao concluir a ordem');
+select isnt((select iniciada_em from public.ordens_manutencao where id = pg_temp.om()), null,
+  'ordem concluída sempre tem data de início (regressão OC-02)');
 select throws_like(
   $$update public.ordens_manutencao set diagnostico = 'Alterado depois' where id = pg_temp.om()$$,
   '%não pode ser alterada%', 'ordem concluída não pode ser alterada');
