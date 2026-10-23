@@ -93,7 +93,8 @@ Observação: a máquina de preparação já tinha as imagens Docker baixadas, e
   ainda declaram suporte só até a versão 9 (árvore de dependências inválida). Manter a 9 até o Next.js atualizar.
 - `npm` 12 bloqueia scripts de instalação não aprovados (aviso sobre `unrs-resolver`); não afeta o
   funcionamento (o lint passa).
-- A CI do GitHub Actions foi escrita e validada localmente com os mesmos comandos; o resultado da primeira
-  execução no GitHub está registrado no relatório final da preparação.
+- CI no GitHub Actions: primeira execução (run 40014034032, push na `main`) **passou** — job de qualidade
+  em 1m02s e job de banco/integração/E2E em 13m25s. Aviso do GitHub: o rótulo `ubuntu-latest` migra para
+  Ubuntu 26 a partir de 19/10/2026; acompanhar a próxima execução.
 - A implantação demonstrativa (Vercel + Supabase remoto) foi **documentada, não executada** (exige contas e
   autorização).

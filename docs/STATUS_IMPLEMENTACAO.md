@@ -37,7 +37,7 @@ Detalhes dos comandos e resultados: `docs/instrutor/07-registro-de-validacao.md`
 - [x] Testes de integração com o Supabase local (RLS via API) — 11
 - [x] Testes E2E (Playwright) — 9 (dev e build de produção)
 - [x] Lint, typecheck e build
-- [x] CI no GitHub Actions (escrita; validada localmente com os mesmos comandos)
+- [x] CI no GitHub Actions — primeira execução no GitHub passou (run 40014034032)
 
 ## 4. Scripts
 
@@ -58,4 +58,4 @@ Detalhes dos comandos e resultados: `docs/instrutor/07-registro-de-validacao.md`
 
 - [x] Validação ponta a ponta registrada (inclui pacote exportado em pasta limpa)
 - [x] Revisão de segredos e pacote do aluno
-- [ ] Git (main) + repositório remoto privado — ver relatório final
+- [x] Git (main) + repositório remoto privado `equipefluxid/senai-sistema-chamados-manutencao` (main + branches de ocorrência e referência)
