@@ -128,10 +128,10 @@ Pré-condição comum: `npm run db:reset`; senha `Senha@123`. "Técnico" = `tecn
 
 | Suíte | Resultado na preparação |
 | --- | --- |
-| `npm run db:test` | 4 arquivos, 73 testes — `Result: PASS` |
-| `npm test` | 5 arquivos, 58 testes — todos passaram |
+| `npm run db:test` | 4 arquivos, 74 testes — `Result: PASS` (73 na tag `v1.0-base`) |
+| `npm test` | 6 arquivos, 63 testes — todos passaram (58 na `v1.0-base`) |
 | `npm run test:integration` | 2 arquivos, 11 testes — todos passaram |
-| `npm run test:e2e` | 9 testes — todos passaram |
+| `npm run test:e2e` | 10 testes — todos passaram (9 na `v1.0-base`) |
 
 ## 4. Achados possíveis na versão estável
 

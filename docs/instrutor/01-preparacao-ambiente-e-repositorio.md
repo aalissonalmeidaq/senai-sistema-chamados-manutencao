@@ -61,7 +61,7 @@ capacidades e o calendário do plano de ensino.
 
 | SA | Preparação |
 | --- | --- |
-| SA 1 | Entregar o pacote da `main`. Os estudantes testam a versão estável (achados possíveis no [gabarito](02-gabarito-casos-de-teste.md#4-achados-possíveis-na-versão-estável)). |
+| SA 1 | Entregar o pacote da `main` (ou da tag `v1.0-base`, sem a exportação CSV). Os estudantes testam a versão estável (achados possíveis no [gabarito](02-gabarito-casos-de-teste.md#4-achados-possíveis-na-versão-estável)). |
 | SA 2 | Os estudantes reinstalam do zero (máquina limpa ou pasta nova) seguindo o guia 05. Opcional: demonstração remota pelo instrutor (guia 07). |
 | SA 3 | Entregar uma ocorrência por vez ([03 — Ocorrências](03-ocorrencias-controladas.md)). |
 

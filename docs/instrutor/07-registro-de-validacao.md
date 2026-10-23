@@ -86,6 +86,14 @@ Observação: a máquina de preparação já tinha as imagens Docker baixadas, e
 | Triagem com "Não atribuído" em chamado em atendimento mostrava erro genérico. | Validação na Server Action + mensagem para a restrição. |
 | Restauração de backup com `<` no PowerShell 5.1 pode corromper acentos; `/tmp` convertido pelo Git Bash. | Procedimento com `docker cp` + caminho relativo; testado nos dois terminais. |
 
+## Mesclagem das ocorrências na `main` (23/10/2026)
+
+A pedido do responsável, os PRs #1 a #5 (ocorrência → correção da OC-01; ocorrência → correção da OC-02;
+referência da OC-03) foram mesclados na `main` do repositório `aalissonalmeidaq/senai-sistema-chamados-manutencao`.
+A versão anterior foi preservada na tag `v1.0-base`. Verificação da `main` resultante: `npm ci`, lint e tipos sem
+erros; unitários 63; 4 migrações aplicadas; pgTAP 74 (`PASS`); integração 11; build; E2E com build de produção 10 —
+todos passaram. A CI (disparo manual, run 40020701227) passou antes da mesclagem.
+
 ## Limitações conhecidas
 
 - ESLint 9.39.5 é a versão instalada pelo `create-next-app` 16.4.3; o npm a marca como descontinuada. O

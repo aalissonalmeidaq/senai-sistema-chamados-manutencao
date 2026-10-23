@@ -59,6 +59,10 @@ problema. O que você digitou é mantido.
 Filtre por **status**, **prioridade**, **equipamento** e **período de abertura** (de/até, datas
 inclusivas). **Limpar filtros** volta à lista completa. A lista mostra até 100 chamados (os mais recentes).
 
+**Exportar CSV** baixa um arquivo `chamados-AAAA-MM-DD.csv` com **todos** os chamados que atendem aos
+filtros atuais (sem o limite de 100), pronto para abrir no Excel, LibreOffice ou Planilhas Google
+(separador `;`, acentos preservados). Cada usuário exporta só o que pode ver.
+
 ### Página do chamado
 
 | Bloco | O que faz | Quem vê |
