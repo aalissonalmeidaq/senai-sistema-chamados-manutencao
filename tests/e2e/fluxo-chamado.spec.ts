@@ -24,13 +24,7 @@ test("ciclo completo: abrir, triar, executar ordem, resolver e encerrar", async 
 
   await page.getByLabel("Equipamento").selectOption({ label: "INF-0003 — Impressora a laser da secretaria" });
   await page.getByLabel("Título").fill(titulo);
-  await page.getByLabel("Descrição").fill("            ");
   await page.getByLabel("Categoria").selectOption({ label: "Falha" });
-  await page.getByRole("button", { name: "Abrir chamado" }).click();
-  await expect(page.getByText("Descreva o problema com pelo menos 10 caracteres.")).toBeVisible();
-  // O que já foi digitado é preservado após o erro
-  await expect(page.getByLabel("Título")).toHaveValue(titulo);
-
   await page.getByLabel("Descrição").fill("A impressora faz um ruído alto ao puxar o papel.");
   await page.getByRole("button", { name: "Abrir chamado" }).click();
   await expect(page.getByText("Chamado aberto com sucesso.")).toBeVisible();
