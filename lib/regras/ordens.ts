@@ -17,6 +17,7 @@ export type TransicaoOrdem = {
 /** RN-OM-01 — Transições permitidas. Concluída e cancelada são finais. */
 export const TRANSICOES_ORDEM: readonly TransicaoOrdem[] = [
   { de: "planejada", para: "em_execucao", exigeObservacao: false, acao: "Iniciar execução" },
+  { de: "planejada", para: "concluida", exigeObservacao: false, acao: "Concluir ordem" },
   { de: "planejada", para: "cancelada", exigeObservacao: true, acao: "Cancelar ordem" },
   { de: "em_execucao", para: "concluida", exigeObservacao: false, acao: "Concluir ordem" },
   { de: "em_execucao", para: "cancelada", exigeObservacao: true, acao: "Cancelar ordem" },

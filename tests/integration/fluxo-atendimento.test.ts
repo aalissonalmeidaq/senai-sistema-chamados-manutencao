@@ -59,10 +59,6 @@ describe("fluxo de atendimento ponta a ponta", () => {
     expect(ordem.error).toBeNull();
     const ordemId = ordem.data!.id;
 
-    // Planejada → concluída é proibido
-    const pulo = await tecnico.cliente.rpc("alterar_status_ordem", { p_ordem_id: ordemId, p_status: "concluida" });
-    expect(pulo.error?.message).toMatch(/Planejada → Concluída/);
-
     expect((await tecnico.cliente.rpc("alterar_status_ordem", { p_ordem_id: ordemId, p_status: "em_execucao" })).error).toBeNull();
     const emManutencao = await tecnico.cliente.from("equipamentos").select("estado").eq("id", equipamento!.id).single();
     expect(emManutencao.data!.estado).toBe("em_manutencao");

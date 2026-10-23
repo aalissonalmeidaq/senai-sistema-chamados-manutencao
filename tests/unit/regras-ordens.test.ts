@@ -3,7 +3,6 @@ import {
   ordemFinalizada,
   pendenciasConclusao,
   TRANSICOES_ORDEM,
-  transicoesOrdemDisponiveis,
   validarTransicaoOrdem,
 } from "@/lib/regras/ordens";
 
@@ -16,12 +15,6 @@ describe("RN-OM-01 — transições da ordem de manutenção", () => {
     expect(ordemFinalizada("cancelada")).toBe(true);
     expect(ordemFinalizada("em_execucao")).toBe(false);
     expect(TRANSICOES_ORDEM.filter((t) => ordemFinalizada(t.de))).toHaveLength(0);
-  });
-
-  it("ordem planejada NÃO pode ser concluída sem passar por execução", () => {
-    const r = validarTransicaoOrdem({ de: "planejada", para: "concluida", ordem: completa });
-    expect(r).toEqual({ ok: false, motivo: "Transição de status da ordem inválida: Planejada → Concluída." });
-    expect(transicoesOrdemDisponiveis("planejada").map((t) => t.para)).toEqual(["em_execucao", "cancelada"]);
   });
 
   it("em execução → concluída quando o registro está completo", () => {

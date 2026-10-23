@@ -166,7 +166,6 @@ create table public.ordens_manutencao (
       char_length(btrim(diagnostico)) > 0
       and char_length(btrim(atividades_executadas)) > 0
       and resultado is not null
-      and iniciada_em is not null
       and concluida_em is not null
     )
   ),
