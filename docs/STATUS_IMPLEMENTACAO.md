@@ -1,52 +1,53 @@
 # Status da implementação
 
 Checklist de construção do sistema didático. Marcado conforme cada etapa foi concluída **e verificada**.
+Detalhes dos comandos e resultados: `docs/instrutor/07-registro-de-validacao.md`.
 
 ## 0. Preparação
-- [x] Inspecionar workspace (vazio) e documentos curriculares (plano de ensino + projeto integrado em `Downloads/Projeto Integrado de Qualidade de Sistemas`)
+- [x] Inspecionar workspace (vazio) e documentos curriculares (plano de ensino + projeto integrado; MSEP consultado para critérios de avaliação)
 - [x] Conferir ferramentas: Node 24.21, npm 12.1, Git 2.55, Docker 29.7, gh 2.100 autenticado
-- [x] Consultar documentação oficial (Next.js 16 instalação/proxy, Supabase SSR)
+- [x] Consultar documentação oficial (Next.js 16 instalação/proxy, Supabase SSR, Vercel variáveis e rollback)
 - [x] Scaffold Next.js 16.4.3 (`create-next-app`) + dependências com versões fixas
 - [x] `supabase init` e ajuste do `config.toml` (portas 553xx, e-mail com confirmação, serviços não usados desligados)
 
 ## 1. Banco de dados
-- [ ] Modelo relacional revisado (perfis, equipamentos, chamados, comentários, ordens, eventos)
-- [ ] Migrações: tipos e tabelas
-- [ ] Migrações: funções, gatilhos, regras de transição e trilha de auditoria
-- [ ] Migrações: RLS e privilégios
-- [ ] `seed.sql` com dados fictícios
-- [ ] Testes pgTAP (RLS, restrições, transições)
-- [ ] `supabase db reset` + `supabase test db` passando
+- [x] Modelo relacional revisado (perfis, equipamentos, chamados, comentários, ordens, eventos)
+- [x] Migrações: tipos e tabelas
+- [x] Migrações: funções, gatilhos, regras de transição e trilha de auditoria
+- [x] Migrações: RLS e privilégios
+- [x] `seed.sql` com dados fictícios (exercita as regras como cada usuário)
+- [x] Testes pgTAP (RLS, restrições, transições) — 73 testes
+- [x] `supabase db reset` + `supabase test db` passando
 
 ## 2. Aplicação
-- [ ] Clientes Supabase SSR + `proxy.ts`
-- [ ] Autenticação: cadastro, entrada, saída, confirmação de e-mail
-- [ ] Equipamentos: listar, buscar, detalhar, cadastrar, editar
-- [ ] Chamados: abrir, listar/filtrar, triagem, atribuição, status, comentários, histórico
-- [ ] Ordens: criar, editar, transições, histórico
-- [ ] Painel e usuários (administração de papéis)
-- [ ] Estados de carregamento, vazio, erro e sucesso; acessibilidade
+- [x] Clientes Supabase SSR + `proxy.ts`
+- [x] Autenticação: cadastro, entrada, saída, confirmação de e-mail (Mailpit)
+- [x] Equipamentos: listar, buscar, detalhar, cadastrar, editar, excluir (admin)
+- [x] Chamados: abrir, listar/filtrar, triagem, atribuição, status, comentários, histórico
+- [x] Ordens: criar, editar, transições, histórico, efeito no equipamento
+- [x] Painel e usuários (administração de papéis)
+- [x] Estados de carregamento, vazio, erro e sucesso; acessibilidade
 
 ## 3. Qualidade
-- [ ] Testes unitários e de componentes (Vitest + Testing Library)
-- [ ] Testes de integração com o Supabase local (RLS via API)
-- [ ] Testes E2E (Playwright)
-- [ ] Lint, typecheck e build
-- [ ] CI no GitHub Actions
+- [x] Testes unitários e de componentes (Vitest + Testing Library) — 58
+- [x] Testes de integração com o Supabase local (RLS via API) — 11
+- [x] Testes E2E (Playwright) — 9 (dev e build de produção)
+- [x] Lint, typecheck e build
+- [x] CI no GitHub Actions (escrita; validada localmente com os mesmos comandos)
 
 ## 4. Scripts
-- [ ] `setup:local`, `db:*`, `student:export`
+- [x] `setup:local` (idempotente), `db:*`, `test:*`, `student:export` (lista de permissão, testado contra vazamentos)
 
 ## 5. Materiais
-- [ ] README do estudante
-- [ ] Guias do estudante (uso, SA1, SA2, SA3, implantação local, testes, implantação demonstrativa, modelos, critérios)
-- [ ] Materiais do instrutor (preparação, gabarito, ocorrências, rubricas, mapa, exportação)
-- [ ] AGENTS.md
+- [x] README do estudante
+- [x] Guias do estudante (requisitos, uso, SA1, SA2, SA3, implantação local, testes, implantação demonstrativa, modelos, critérios, modelo de dados)
+- [x] Materiais do instrutor (preparação + divergências, gabarito verificado, ocorrências, rubricas, mapa, pacote, registro de validação)
+- [x] AGENTS.md
 
 ## 6. Ocorrências controladas
-- [ ] OC-01, OC-02 (branches de defeito) e OC-03 (demanda evolutiva) com resultado real registrado
+- [x] OC-01 e OC-02 (branches de defeito + branches de referência) e OC-03 (demanda evolutiva + referência), com resultado real registrado
 
 ## 7. Entrega
-- [ ] Validação ponta a ponta registrada
-- [ ] Revisão de segredos e pacote do aluno
-- [ ] Git (main) + repositório remoto privado
+- [x] Validação ponta a ponta registrada (inclui pacote exportado em pasta limpa)
+- [x] Revisão de segredos e pacote do aluno
+- [ ] Git (main) + repositório remoto privado — ver relatório final

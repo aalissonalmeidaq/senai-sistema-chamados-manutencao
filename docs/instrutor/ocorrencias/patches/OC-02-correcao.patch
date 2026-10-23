@@ -1,0 +1,121 @@
+diff --git a/lib/regras/ordens.ts b/lib/regras/ordens.ts
+index f5606f0..91c3926 100644
+--- a/lib/regras/ordens.ts
++++ b/lib/regras/ordens.ts
+@@ -17,7 +17,6 @@ export type TransicaoOrdem = {
+ /** RN-OM-01 — Transições permitidas. Concluída e cancelada são finais. */
+ export const TRANSICOES_ORDEM: readonly TransicaoOrdem[] = [
+   { de: "planejada", para: "em_execucao", exigeObservacao: false, acao: "Iniciar execução" },
+-  { de: "planejada", para: "concluida", exigeObservacao: false, acao: "Concluir ordem" },
+   { de: "planejada", para: "cancelada", exigeObservacao: true, acao: "Cancelar ordem" },
+   { de: "em_execucao", para: "concluida", exigeObservacao: false, acao: "Concluir ordem" },
+   { de: "em_execucao", para: "cancelada", exigeObservacao: true, acao: "Cancelar ordem" },
+diff --git a/supabase/migrations/20261023185020_corrige_conclusao_ordem.sql b/supabase/migrations/20261023185020_corrige_conclusao_ordem.sql
+new file mode 100644
+index 0000000..6b62c5f
+--- /dev/null
++++ b/supabase/migrations/20261023185020_corrige_conclusao_ordem.sql
+@@ -0,0 +1,43 @@
++-- =============================================================================
++-- Correção OC-02 — ordem de manutenção concluída sem passar por execução
++--
++-- Causa: a transição Planejada → Concluída estava liberada (TypeScript e banco)
++-- e a restrição de integridade deixou de exigir a data de início.
++-- Correção (manutenção corretiva): nova migração; as migrações já
++-- distribuídas NÃO são editadas.
++-- =============================================================================
++
++-- 1. Regra de transição (RN-OM-01): concluir só a partir de "em execução".
++create or replace function public.transicao_ordem_permitida(
++  de public.status_ordem,
++  para public.status_ordem
++)
++returns boolean
++language sql
++immutable
++set search_path = ''
++as $$
++  select case
++    when de = 'planejada'   and para in ('em_execucao', 'cancelada') then true
++    when de = 'em_execucao' and para in ('concluida', 'cancelada')   then true
++    else false
++  end;
++$$;
++
++-- 2. Integridade (RN-OM-03): ordem concluída precisa ter data de início.
++--    Registros antigos concluídos sem início (gerados pelo defeito) não são
++--    alterados automaticamente — não inventamos datas. A restrição vale para
++--    linhas novas e alteradas (NOT VALID); os registros antigos devem ser
++--    listados no registro de mudança e tratados com o responsável:
++--      select id, chamado_id, concluida_em from public.ordens_manutencao
++--      where status = 'concluida' and iniciada_em is null;
++alter table public.ordens_manutencao drop constraint ordens_conclusao_completa;
++alter table public.ordens_manutencao add constraint ordens_conclusao_completa check (
++  status <> 'concluida' or (
++    char_length(btrim(diagnostico)) > 0
++    and char_length(btrim(atividades_executadas)) > 0
++    and resultado is not null
++    and iniciada_em is not null
++    and concluida_em is not null
++  )
++) not valid;
+diff --git a/supabase/tests/03_ordens.test.sql b/supabase/tests/03_ordens.test.sql
+index 2768d25..eb9fc69 100644
+--- a/supabase/tests/03_ordens.test.sql
++++ b/supabase/tests/03_ordens.test.sql
+@@ -1,7 +1,7 @@
+ -- Testes de ordens de manutenção: criação, transições, integridade e efeito no equipamento.
+ begin;
+ create extension if not exists pgtap with schema extensions;
+-select plan(17);
++select plan(19);
+ 
+ insert into auth.users (id, email, raw_user_meta_data) values
+   ('d0000000-0000-4000-8000-000000000001', 'om.tecnico@example.com', '{"nome":"Técnico OM"}'),
+@@ -59,6 +59,11 @@ select throws_ok(
+     values (pg_temp.ch(), 'preventiva', 'd0000000-0000-4000-8000-000000000001')$$,
+   '23505', null, 'só pode haver uma ordem ativa por chamado');
+ 
++-- Regressão OC-02
++select throws_like(
++  $$select public.alterar_status_ordem(pg_temp.om(), 'concluida')$$,
++  '%Transição de status da ordem inválida: Planejada → Concluída%', 'ordem planejada não pode ser concluída sem execução');
++
+ select lives_ok($$select public.alterar_status_ordem(pg_temp.om(), 'em_execucao')$$, 'planejada → em execução');
+ select isnt((select iniciada_em from public.ordens_manutencao where id = pg_temp.om()), null, 'data de início registrada');
+ select is(pg_temp.estado(), 'em_manutencao', 'equipamento passa para "em manutenção"');
+@@ -80,6 +85,8 @@ select throws_like(
+ 
+ select lives_ok($$select public.alterar_status_ordem(pg_temp.om(), 'concluida')$$, 'em execução → concluída');
+ select is(pg_temp.estado(), 'disponivel', 'equipamento volta para "disponível" ao concluir a ordem');
++select isnt((select iniciada_em from public.ordens_manutencao where id = pg_temp.om()), null,
++  'ordem concluída sempre tem data de início (regressão OC-02)');
+ select throws_like(
+   $$update public.ordens_manutencao set diagnostico = 'Alterado depois' where id = pg_temp.om()$$,
+   '%não pode ser alterada%', 'ordem concluída não pode ser alterada');
+diff --git a/tests/unit/regras-ordens.test.ts b/tests/unit/regras-ordens.test.ts
+index bc8921a..7853ba7 100644
+--- a/tests/unit/regras-ordens.test.ts
++++ b/tests/unit/regras-ordens.test.ts
+@@ -3,6 +3,7 @@ import {
+   ordemFinalizada,
+   pendenciasConclusao,
+   TRANSICOES_ORDEM,
++  transicoesOrdemDisponiveis,
+   validarTransicaoOrdem,
+ } from "@/lib/regras/ordens";
+ 
+@@ -17,6 +18,13 @@ describe("RN-OM-01 — transições da ordem de manutenção", () => {
+     expect(TRANSICOES_ORDEM.filter((t) => ordemFinalizada(t.de))).toHaveLength(0);
+   });
+ 
++  // Regressão OC-02: a ordem precisa passar por execução antes de ser concluída (RN-OM-01)
++  it("ordem planejada NÃO pode ser concluída sem passar por execução", () => {
++    const r = validarTransicaoOrdem({ de: "planejada", para: "concluida", ordem: completa });
++    expect(r).toEqual({ ok: false, motivo: "Transição de status da ordem inválida: Planejada → Concluída." });
++    expect(transicoesOrdemDisponiveis("planejada").map((t) => t.para)).toEqual(["em_execucao", "cancelada"]);
++  });
++
+   it("em execução → concluída quando o registro está completo", () => {
+     expect(validarTransicaoOrdem({ de: "em_execucao", para: "concluida", ordem: completa })).toEqual({ ok: true });
+   });
