@@ -109,6 +109,13 @@ export function validarTransicaoChamado(entrada: {
   return { ok: true };
 }
 
+/** RN-CH-04 — Status que exigem técnico responsável atribuído. */
+export const STATUS_CHAMADO_EXIGE_TECNICO: readonly StatusChamado[] = ["em_atendimento", "aguardando", "resolvido"];
+
+export function exigeTecnico(status: StatusChamado) {
+  return STATUS_CHAMADO_EXIGE_TECNICO.includes(status);
+}
+
 /** A triagem (prioridade, categoria, técnico) é feita pela equipe em chamados ainda em andamento. */
 export function podeFazerTriagem(status: StatusChamado, papel: PapelUsuario) {
   return ehEquipe(papel) && STATUS_CHAMADO_ATIVOS.includes(status);

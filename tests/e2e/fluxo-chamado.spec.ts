@@ -123,3 +123,12 @@ test("equipamento: validação de código e cadastro", async ({ page }) => {
   await expect(page.getByText("Equipamento cadastrado com sucesso.")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(codigo);
 });
+
+test("triagem: remover o técnico de chamado em atendimento mostra mensagem clara", async ({ page }) => {
+  await entrar(page, "tecnico1@example.com");
+  await page.goto("/chamados/2"); // "Ar-condicionado pingando água", em atendimento no seed
+  const triagem = page.getByRole("form", { name: "Triagem do chamado" });
+  await triagem.getByLabel("Técnico responsável").selectOption({ label: "Não atribuído" });
+  await triagem.getByRole("button", { name: "Salvar triagem" }).click();
+  await expect(triagem.getByRole("alert")).toContainText("precisa de técnico responsável");
+});
