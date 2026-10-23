@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/*
+ * Identidade visual neutra e didática (sem marcas reais).
+ * Cores com contraste AA sobre fundo claro.
+ */
+@theme {
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  --color-marca-50: #eef5fb;
+  --color-marca-100: #d6e7f5;
+  --color-marca-600: #1f5f99;
+  --color-marca-700: #194d7d;
+  --color-marca-800: #143d63;
+  --color-marca-900: #0f2e4b;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: #f4f6f8;
+  color: #1e293b;
+}
+
+/* Foco sempre visível para navegação por teclado */
+:focus-visible {
+  outline: 3px solid #1f5f99;
+  outline-offset: 2px;
+}
+
+/* Link "pular para o conteúdo" */
+.pular-conteudo {
+  position: absolute;
+  left: -9999px;
+}
+.pular-conteudo:focus {
+  left: 1rem;
+  top: 1rem;
+  z-index: 50;
+  background: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
