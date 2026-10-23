@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { exigirUsuario } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
-import { listarEquipamentosParaSelecao } from "@/lib/consultas";
+import { consultarChamados, listarEquipamentosParaSelecao } from "@/lib/consultas";
 import { ehEquipe } from "@/lib/regras/permissoes";
 import { filtrosChamadosSchema } from "@/lib/validacao/esquemas";
 import { PRIORIDADES, ROTULO_PRIORIDADE, ROTULO_STATUS_CHAMADO, STATUS_CHAMADO } from "@/lib/dominio/rotulos";
-import { codigoChamado, formatarDataHora, intervaloDoPeriodo } from "@/lib/formatacao";
+import { codigoChamado, formatarDataHora } from "@/lib/formatacao";
 import { registrarErro } from "@/lib/erros";
 import { CabecalhoPagina } from "@/components/ui/CabecalhoPagina";
 import { EstadoVazio } from "@/components/ui/EstadoVazio";
@@ -22,25 +21,9 @@ export default async function ListaChamados({ searchParams }: PageProps<"/chamad
   const usuario = await exigirUsuario();
   const params = await searchParams;
   const filtros = filtrosChamadosSchema.parse(params);
-  const { inicio, fimExclusivo } = intervaloDoPeriodo(filtros.de, filtros.ate);
-
-  const supabase = await createClient();
-  let consulta = supabase
-    .from("chamados")
-    .select(
-      "id, titulo, status, prioridade, criado_em, equipamento:equipamentos(id, codigo, nome), solicitante:perfis!chamados_solicitante_id_fkey(nome), tecnico:perfis!chamados_tecnico_id_fkey(nome)",
-      { count: "exact" },
-    )
-    .order("criado_em", { ascending: false })
-    .limit(LIMITE);
-  if (filtros.status) consulta = consulta.eq("status", filtros.status);
-  if (filtros.prioridade) consulta = consulta.eq("prioridade", filtros.prioridade);
-  if (filtros.equipamento) consulta = consulta.eq("equipamento_id", filtros.equipamento);
-  if (inicio) consulta = consulta.gte("criado_em", inicio);
-  if (fimExclusivo) consulta = consulta.lt("criado_em", fimExclusivo);
 
   const [{ data: chamados, count, error }, equipamentos] = await Promise.all([
-    consulta,
+    consultarChamados(filtros, LIMITE),
     listarEquipamentosParaSelecao(),
   ]);
   if (error) {
@@ -50,6 +33,10 @@ export default async function ListaChamados({ searchParams }: PageProps<"/chamad
   const lista = chamados ?? [];
   const filtrando = Boolean(filtros.status || filtros.prioridade || filtros.equipamento || filtros.de || filtros.ate);
   const equipe = ehEquipe(usuario.papel);
+  // Mesmos filtros da tela, repassados para a exportação.
+  const consultaAtual = new URLSearchParams(
+    Object.entries(filtros).flatMap(([chave, valor]) => (valor === undefined ? [] : [[chave, String(valor)]])),
+  ).toString();
 
   return (
     <>
@@ -58,9 +45,18 @@ export default async function ListaChamados({ searchParams }: PageProps<"/chamad
         titulo={equipe ? "Chamados" : "Meus chamados"}
         descricao={equipe ? "Todos os chamados registrados." : "Chamados abertos por você."}
         acoes={
-          <Link href="/chamados/novo" className={botao.primario}>
-            Abrir chamado
-          </Link>
+          <>
+            <a
+              href={`/chamados/exportar${consultaAtual ? `?${consultaAtual}` : ""}`}
+              className={botao.secundario}
+              download
+            >
+              Exportar CSV
+            </a>
+            <Link href="/chamados/novo" className={botao.primario}>
+              Abrir chamado
+            </Link>
+          </>
         }
       />
 
