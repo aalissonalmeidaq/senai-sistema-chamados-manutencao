@@ -52,6 +52,22 @@ describe("abertura de chamado (RN-CH-02)", () => {
     expect(r.success && r.data.equipamento_id).toBe(3);
   });
 
+  // Regressão OC-01: espaços no início/fim não contam para o mínimo de 10 caracteres (RN-CH-02)
+  it("rejeita descrição só com espaços", () => {
+    const r = abrirChamadoSchema.safeParse({ ...valido, descricao: "            " });
+    expect(erros(r).descricao).toEqual(["Descreva o problema com pelo menos 10 caracteres."]);
+  });
+
+  it("rejeita descrição curta cercada de espaços", () => {
+    const r = abrirChamadoSchema.safeParse({ ...valido, descricao: "    abc    " });
+    expect(erros(r).descricao).toEqual(["Descreva o problema com pelo menos 10 caracteres."]);
+  });
+
+  it("grava a descrição sem os espaços das pontas", () => {
+    const r = abrirChamadoSchema.safeParse({ ...valido, descricao: "  Projetor sem imagem  " });
+    expect(r.success && r.data.descricao).toBe("Projetor sem imagem");
+  });
+
   it("exige equipamento selecionado", () => {
     const r = abrirChamadoSchema.safeParse({ ...valido, equipamento_id: "" });
     expect(erros(r).equipamento_id).toEqual(["Selecione o equipamento."]);
