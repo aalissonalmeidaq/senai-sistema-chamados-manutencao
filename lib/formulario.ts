@@ -6,8 +6,6 @@ export type EstadoFormulario = {
   mensagem?: string;
   /** Erros por campo (nome do campo → mensagens). */
   erros?: Record<string, string[] | undefined>;
-  /** Valores enviados, para não perder o que o usuário digitou em caso de erro. */
-  valores?: Record<string, string>;
 };
 
 export const ESTADO_INICIAL: EstadoFormulario = { ok: false };
@@ -21,17 +19,16 @@ export function lerFormulario(formData: FormData): Record<string, string> {
   return valores;
 }
 
-export function falhaValidacao(erro: z.ZodError, valores: Record<string, string>): EstadoFormulario {
+export function falhaValidacao(erro: z.ZodError): EstadoFormulario {
   return {
     ok: false,
     mensagem: "Corrija os campos destacados.",
     erros: z.flattenError(erro).fieldErrors as Record<string, string[]>,
-    valores,
   };
 }
 
-export function falha(mensagem: string, valores?: Record<string, string>): EstadoFormulario {
-  return { ok: false, mensagem, valores };
+export function falha(mensagem: string): EstadoFormulario {
+  return { ok: false, mensagem };
 }
 
 export function sucesso(mensagem: string): EstadoFormulario {

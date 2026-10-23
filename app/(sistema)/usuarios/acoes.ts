@@ -13,7 +13,7 @@ export async function definirPapel(_estado: EstadoFormulario, formData: FormData
   await exigirAdmin();
   const valores = lerFormulario(formData);
   const dados = definirPapelSchema.safeParse(valores);
-  if (!dados.success) return falhaValidacao(dados.error, valores);
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("definir_papel", {

@@ -28,7 +28,7 @@ export async function abrirChamado(_estado: EstadoFormulario, formData: FormData
   const usuario = await exigirUsuario();
   const valores = lerFormulario(formData);
   const dados = abrirChamadoSchema.safeParse(valores);
-  if (!dados.success) return falhaValidacao(dados.error, valores);
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -38,7 +38,7 @@ export async function abrirChamado(_estado: EstadoFormulario, formData: FormData
     .single();
   if (error) {
     registrarErro("abrirChamado", error);
-    return falha(traduzirErro(error), valores);
+    return falha(traduzirErro(error));
   }
   revalidatePath("/chamados");
   redirect(`/chamados/${data.id}?sucesso=chamado-aberto`);
@@ -49,7 +49,7 @@ export async function salvarTriagem(id: number, _estado: EstadoFormulario, formD
   const usuario = await exigirEquipe();
   const valores = lerFormulario(formData);
   const dados = triagemSchema.safeParse(valores);
-  if (!dados.success) return falhaValidacao(dados.error, valores);
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const supabase = await createClient();
   const { data: chamado } = await supabase.from("chamados").select("status").eq("id", id).maybeSingle();
@@ -61,7 +61,7 @@ export async function salvarTriagem(id: number, _estado: EstadoFormulario, formD
   const { error } = await supabase.from("chamados").update(dados.data).eq("id", id);
   if (error) {
     registrarErro("salvarTriagem", error);
-    return falha(traduzirErro(error), valores);
+    return falha(traduzirErro(error));
   }
   revalidatePath(`/chamados/${id}`);
   return sucesso("Triagem salva.");
@@ -76,7 +76,7 @@ export async function mudarStatusChamado(
   const usuario = await exigirUsuario();
   const valores = lerFormulario(formData);
   const dados = mudarStatusChamadoSchema.safeParse(valores);
-  if (!dados.success) return falhaValidacao(dados.error, valores);
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const supabase = await createClient();
   const { data: chamado } = await supabase
@@ -101,7 +101,7 @@ export async function mudarStatusChamado(
     temTecnico: Boolean(chamado.tecnico_id),
     temOrdemAtiva: (ordensAtivas ?? 0) > 0,
   });
-  if (!validacao.ok) return falha(validacao.motivo, valores);
+  if (!validacao.ok) return falha(validacao.motivo);
 
   const { error } = await supabase.rpc("alterar_status_chamado", {
     p_chamado_id: id,
@@ -110,9 +110,11 @@ export async function mudarStatusChamado(
   });
   if (error) {
     registrarErro("mudarStatusChamado", error);
-    return falha(traduzirErro(error), valores);
+    return falha(traduzirErro(error));
   }
   revalidatePath(`/chamados/${id}`);
+  // Encerrado não tem mais ações: o formulário some, então a mensagem vai pela URL.
+  if (dados.data.para === "encerrado") redirect(`/chamados/${id}?sucesso=chamado-encerrado`);
   return sucesso(`Status alterado para ${ROTULO_STATUS_CHAMADO[dados.data.para]}.`);
 }
 
@@ -121,7 +123,7 @@ export async function comentarChamado(id: number, _estado: EstadoFormulario, for
   const usuario = await exigirUsuario();
   const valores = lerFormulario(formData);
   const dados = comentarioSchema.safeParse(valores);
-  if (!dados.success) return falhaValidacao(dados.error, valores);
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const supabase = await createClient();
   const { data: chamado } = await supabase.from("chamados").select("status").eq("id", id).maybeSingle();
@@ -136,7 +138,7 @@ export async function comentarChamado(id: number, _estado: EstadoFormulario, for
   });
   if (error) {
     registrarErro("comentarChamado", error);
-    return falha(traduzirErro(error), valores);
+    return falha(traduzirErro(error));
   }
   revalidatePath(`/chamados/${id}`);
   return sucesso("Comentário registrado.");

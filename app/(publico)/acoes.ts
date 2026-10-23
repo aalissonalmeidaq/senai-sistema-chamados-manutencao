@@ -15,7 +15,7 @@ function destinoSeguro(valor: string | undefined) {
 export async function entrar(_estado: EstadoFormulario, formData: FormData): Promise<EstadoFormulario> {
   const valores = lerFormulario(formData);
   const dados = entradaSchema.safeParse(valores);
-  if (!dados.success) return falhaValidacao(dados.error, { email: valores.email ?? "" });
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
@@ -27,10 +27,9 @@ export async function entrar(_estado: EstadoFormulario, formData: FormData): Pro
     if (error.code === "email_not_confirmed") {
       return falha(
         "E-mail ainda não confirmado. Abra a caixa de e-mail local (Mailpit) e clique no link de confirmação.",
-        { email: dados.data.email },
       );
     }
-    return falha("E-mail ou senha incorretos.", { email: dados.data.email });
+    return falha("E-mail ou senha incorretos.");
   }
   redirect(destinoSeguro(valores.proximo));
 }
@@ -38,8 +37,7 @@ export async function entrar(_estado: EstadoFormulario, formData: FormData): Pro
 export async function cadastrar(_estado: EstadoFormulario, formData: FormData): Promise<EstadoFormulario> {
   const valores = lerFormulario(formData);
   const dados = cadastroSchema.safeParse(valores);
-  const semSenhas = { nome: valores.nome ?? "", email: valores.email ?? "" };
-  if (!dados.success) return falhaValidacao(dados.error, semSenhas);
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const origem = (await headers()).get("origin") ?? "http://localhost:3000";
   const supabase = await createClient();
@@ -55,9 +53,9 @@ export async function cadastrar(_estado: EstadoFormulario, formData: FormData): 
 
   if (error) {
     registrarErro("cadastrar", error);
-    if (error.code === "user_already_exists") return falha("Este e-mail já está cadastrado.", semSenhas);
-    if (error.code === "weak_password") return falha("Senha fraca. Use pelo menos 8 caracteres.", semSenhas);
-    return falha("Não foi possível concluir o cadastro. Tente novamente.", semSenhas);
+    if (error.code === "user_already_exists") return falha("Este e-mail já está cadastrado.");
+    if (error.code === "weak_password") return falha("Senha fraca. Use pelo menos 8 caracteres.");
+    return falha("Não foi possível concluir o cadastro. Tente novamente.");
   }
 
   // Com confirmação de e-mail ativa, não há sessão até o usuário confirmar.

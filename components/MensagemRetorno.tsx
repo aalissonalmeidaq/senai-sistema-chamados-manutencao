@@ -9,7 +9,10 @@ const SUCESSO: Record<string, string> = {
   "equipamento-atualizado": "Equipamento atualizado com sucesso.",
   "equipamento-excluido": "Equipamento excluído.",
   "chamado-aberto": "Chamado aberto com sucesso. Acompanhe o andamento por esta página.",
+  "chamado-encerrado": "Chamado encerrado. O histórico continua disponível para consulta.",
   "ordem-criada": "Ordem de manutenção criada com sucesso.",
+  "ordem-concluida": "Ordem concluída. O registro foi preservado e não pode mais ser alterado.",
+  "ordem-cancelada": "Ordem cancelada. O registro foi preservado e não pode mais ser alterado.",
 };
 
 const AVISO: Record<string, string> = {

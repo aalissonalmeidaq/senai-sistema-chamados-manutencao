@@ -22,7 +22,7 @@ export async function criarOrdem(_estado: EstadoFormulario, formData: FormData):
   const usuario = await exigirEquipe();
   const valores = lerFormulario(formData);
   const dados = criarOrdemSchema.safeParse(valores);
-  if (!dados.success) return falhaValidacao(dados.error, valores);
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const supabase = await createClient();
   const { data: chamado } = await supabase
@@ -30,7 +30,7 @@ export async function criarOrdem(_estado: EstadoFormulario, formData: FormData):
     .select("status, equipamento_id")
     .eq("id", dados.data.chamado_id)
     .maybeSingle();
-  if (!chamado) return falha("Chamado não encontrado.", valores);
+  if (!chamado) return falha("Chamado não encontrado.");
 
   const { count } = await supabase
     .from("ordens_manutencao")
@@ -41,9 +41,7 @@ export async function criarOrdem(_estado: EstadoFormulario, formData: FormData):
     return falha(
       (count ?? 0) > 0
         ? "Este chamado já possui uma ordem de manutenção ativa."
-        : "Só é possível criar ordem para chamado em triagem, em atendimento ou aguardando.",
-      valores,
-    );
+        : "Só é possível criar ordem para chamado em triagem, em atendimento ou aguardando.");
   }
 
   const { data, error } = await supabase
@@ -54,7 +52,7 @@ export async function criarOrdem(_estado: EstadoFormulario, formData: FormData):
     .single();
   if (error) {
     registrarErro("criarOrdem", error);
-    return falha(traduzirErro(error), valores);
+    return falha(traduzirErro(error));
   }
   revalidatePath(`/chamados/${dados.data.chamado_id}`);
   redirect(`/ordens/${data.id}?sucesso=ordem-criada`);
@@ -64,22 +62,22 @@ export async function atualizarOrdem(id: number, _estado: EstadoFormulario, form
   await exigirEquipe();
   const valores = lerFormulario(formData);
   const dados = atualizarOrdemSchema.safeParse(valores);
-  if (!dados.success) return falhaValidacao(dados.error, valores);
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const supabase = await createClient();
   const { data: ordem } = await supabase.from("ordens_manutencao").select("status, tipo").eq("id", id).maybeSingle();
-  if (!ordem) return falha("Ordem não encontrada.", valores);
+  if (!ordem) return falha("Ordem não encontrada.");
   if (ordemFinalizada(ordem.status)) {
-    return falha(`A ordem está ${ROTULO_STATUS_ORDEM[ordem.status].toLowerCase()} e não pode ser alterada.`, valores);
+    return falha(`A ordem está ${ROTULO_STATUS_ORDEM[ordem.status].toLowerCase()} e não pode ser alterada.`);
   }
   if (dados.data.tipo !== ordem.tipo && ordem.status !== "planejada") {
-    return falha("O tipo de manutenção só pode ser alterado enquanto a ordem está planejada.", valores);
+    return falha("O tipo de manutenção só pode ser alterado enquanto a ordem está planejada.");
   }
 
   const { error } = await supabase.from("ordens_manutencao").update(dados.data).eq("id", id);
   if (error) {
     registrarErro("atualizarOrdem", error);
-    return falha(traduzirErro(error), valores);
+    return falha(traduzirErro(error));
   }
   revalidatePath(`/ordens/${id}`);
   return sucesso("Registro da ordem salvo.");
@@ -89,7 +87,7 @@ export async function mudarStatusOrdem(id: number, _estado: EstadoFormulario, fo
   await exigirEquipe();
   const valores = lerFormulario(formData);
   const dados = mudarStatusOrdemSchema.safeParse(valores);
-  if (!dados.success) return falhaValidacao(dados.error, valores);
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const supabase = await createClient();
   const { data: ordem } = await supabase
@@ -105,7 +103,7 @@ export async function mudarStatusOrdem(id: number, _estado: EstadoFormulario, fo
     observacao: dados.data.observacao,
     ordem,
   });
-  if (!validacao.ok) return falha(validacao.motivo, valores);
+  if (!validacao.ok) return falha(validacao.motivo);
 
   const { error } = await supabase.rpc("alterar_status_ordem", {
     p_ordem_id: id,
@@ -114,9 +112,11 @@ export async function mudarStatusOrdem(id: number, _estado: EstadoFormulario, fo
   });
   if (error) {
     registrarErro("mudarStatusOrdem", error);
-    return falha(traduzirErro(error), valores);
+    return falha(traduzirErro(error));
   }
   revalidatePath(`/ordens/${id}`);
   revalidatePath(`/chamados/${ordem.chamado_id}`);
+  // Ordem finalizada não tem mais formulários: a mensagem vai pela URL.
+  if (ordemFinalizada(dados.data.para)) redirect(`/ordens/${id}?sucesso=ordem-${dados.data.para}`);
   return sucesso(`Status da ordem alterado para ${ROTULO_STATUS_ORDEM[dados.data.para]}.`);
 }

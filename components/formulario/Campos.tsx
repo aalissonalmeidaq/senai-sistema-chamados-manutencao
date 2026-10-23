@@ -18,10 +18,7 @@ type PropsBase = {
 function useCampo(nome: string, valorInicial?: string) {
   const id = useId();
   const { estado } = useFormulario();
-  const erros = estado.erros?.[nome];
-  // Depois de um envio com erro, mantém o que o usuário digitou.
-  const valor = !estado.ok && estado.valores?.[nome] !== undefined ? estado.valores[nome] : valorInicial;
-  return { id, erro: erros?.[0], valor };
+  return { id, erro: estado.erros?.[nome]?.[0], valor: valorInicial };
 }
 
 function Moldura({
@@ -43,10 +40,11 @@ function Moldura({
     <div>
       <label htmlFor={id} className="mb-1 block text-sm font-semibold text-slate-800">
         {rotulo}
+        {/* O asterisco é só visual; leitores de tela anunciam "obrigatório" pelo atributo required. */}
         {obrigatorio ? (
-          <span className="text-red-700">
+          <span aria-hidden="true" className="text-red-700">
             {" "}
-            *<span className="sr-only">(obrigatório)</span>
+            *
           </span>
         ) : null}
       </label>
@@ -82,8 +80,6 @@ export function CampoTexto({
         id={id}
         name={props.nome}
         type={tipo}
-        // a chave remonta o campo quando o valor preservado muda
-        key={valor}
         defaultValue={tipo === "password" ? undefined : valor}
         required={props.obrigatorio}
         autoComplete={autoComplete}
@@ -103,7 +99,6 @@ export function CampoAreaTexto({ linhas = 4, ...props }: PropsBase & { linhas?: 
       <textarea
         id={id}
         name={props.nome}
-        key={valor}
         defaultValue={valor}
         rows={linhas}
         required={props.obrigatorio}
@@ -126,7 +121,6 @@ export function CampoSelecao({
       <select
         id={id}
         name={props.nome}
-        key={valor}
         defaultValue={valor ?? ""}
         required={props.obrigatorio}
         aria-invalid={erro ? true : undefined}

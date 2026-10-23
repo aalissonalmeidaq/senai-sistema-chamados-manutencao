@@ -12,13 +12,13 @@ export async function criarEquipamento(_estado: EstadoFormulario, formData: Form
   await exigirEquipe();
   const valores = lerFormulario(formData);
   const dados = equipamentoSchema.safeParse(valores);
-  if (!dados.success) return falhaValidacao(dados.error, valores);
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const supabase = await createClient();
   const { data, error } = await supabase.from("equipamentos").insert(dados.data).select("id").single();
   if (error) {
     registrarErro("criarEquipamento", error);
-    return falha(traduzirErro(error), valores);
+    return falha(traduzirErro(error));
   }
   revalidatePath("/equipamentos");
   redirect(`/equipamentos/${data.id}?sucesso=equipamento-criado`);
@@ -32,15 +32,15 @@ export async function atualizarEquipamento(
   await exigirEquipe();
   const valores = lerFormulario(formData);
   const dados = equipamentoSchema.safeParse(valores);
-  if (!dados.success) return falhaValidacao(dados.error, valores);
+  if (!dados.success) return falhaValidacao(dados.error);
 
   const supabase = await createClient();
   const { data, error } = await supabase.from("equipamentos").update(dados.data).eq("id", id).select("id");
   if (error) {
     registrarErro("atualizarEquipamento", error);
-    return falha(traduzirErro(error), valores);
+    return falha(traduzirErro(error));
   }
-  if (data.length === 0) return falha("Equipamento não encontrado ou sem permissão para editar.", valores);
+  if (data.length === 0) return falha("Equipamento não encontrado ou sem permissão para editar.");
   revalidatePath(`/equipamentos/${id}`);
   redirect(`/equipamentos/${id}?sucesso=equipamento-atualizado`);
 }
