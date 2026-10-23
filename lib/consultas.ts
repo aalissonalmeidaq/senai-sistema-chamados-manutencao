@@ -5,7 +5,33 @@
  */
 import { createClient } from "@/lib/supabase/server";
 import { registrarErro } from "@/lib/erros";
+import { intervaloDoPeriodo } from "@/lib/formatacao";
+import type { FiltrosChamados } from "@/lib/validacao/esquemas";
 import type { ItemHistorico } from "@/components/Historico";
+
+/**
+ * Chamados com os filtros da lista (status, prioridade, equipamento e período),
+ * do mais recente para o mais antigo. Usada pela tela e pela exportação CSV,
+ * para que as duas mostrem exatamente o mesmo conjunto (RLS incluso).
+ */
+export async function consultarChamados(filtros: FiltrosChamados, limite: number) {
+  const supabase = await createClient();
+  const { inicio, fimExclusivo } = intervaloDoPeriodo(filtros.de, filtros.ate);
+  let consulta = supabase
+    .from("chamados")
+    .select(
+      "id, titulo, status, prioridade, categoria, criado_em, resolvido_em, encerrado_em, equipamento:equipamentos(id, codigo, nome), solicitante:perfis!chamados_solicitante_id_fkey(nome), tecnico:perfis!chamados_tecnico_id_fkey(nome)",
+      { count: "exact" },
+    )
+    .order("criado_em", { ascending: false })
+    .limit(limite);
+  if (filtros.status) consulta = consulta.eq("status", filtros.status);
+  if (filtros.prioridade) consulta = consulta.eq("prioridade", filtros.prioridade);
+  if (filtros.equipamento) consulta = consulta.eq("equipamento_id", filtros.equipamento);
+  if (inicio) consulta = consulta.gte("criado_em", inicio);
+  if (fimExclusivo) consulta = consulta.lt("criado_em", fimExclusivo);
+  return consulta;
+}
 
 type Alvo = { equipamento_id: number } | { chamado_id: number } | { ordem_id: number };
 

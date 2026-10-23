@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 import { entrar, sair } from "./apoio";
 
@@ -116,6 +117,29 @@ test("equipamento: validação de código e cadastro", async ({ page }) => {
   await page.getByRole("button", { name: "Salvar equipamento" }).click();
   await expect(page.getByText("Equipamento cadastrado com sucesso.")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(codigo);
+});
+
+test("OC-03: exportar a lista filtrada em CSV respeitando permissões", async ({ page }) => {
+  await entrar(page, "tecnico1@example.com");
+  await page.goto("/chamados?status=em_atendimento");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("link", { name: "Exportar CSV" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^chamados-\d{4}-\d{2}-\d{2}\.csv$/);
+  const texto = await readFile(await download.path(), "utf8");
+  const linhas = texto.replace("\uFEFF", "").trim().split("\r\n");
+  expect(linhas[0]).toContain("Código;Título;Equipamento;Status");
+  expect(linhas.length).toBeGreaterThan(1);
+  expect(linhas.slice(1).every((l) => l.includes(";Em atendimento;"))).toBe(true);
+  await sair(page);
+
+  // Solicitante exporta somente os próprios chamados
+  await entrar(page, "solicitante1@example.com");
+  const resposta = await page.request.get("/chamados/exportar");
+  const csvSolicitante = (await resposta.text()).replace("\uFEFF", "").trim().split("\r\n").slice(1);
+  expect(csvSolicitante.length).toBeGreaterThan(0);
+  expect(csvSolicitante.every((l) => l.includes(";Daniela Souza;"))).toBe(true);
 });
 
 test("triagem: remover o técnico de chamado em atendimento mostra mensagem clara", async ({ page }) => {
