@@ -1,0 +1,329 @@
+diff --git a/app/(sistema)/chamados/exportar/route.ts b/app/(sistema)/chamados/exportar/route.ts
+new file mode 100644
+index 0000000..c9d6f12
+--- /dev/null
++++ b/app/(sistema)/chamados/exportar/route.ts
+@@ -0,0 +1,34 @@
++import { exigirUsuario } from "@/lib/auth";
++import { consultarChamados } from "@/lib/consultas";
++import { csvDeChamados } from "@/lib/relatorios/csv";
++import { filtrosChamadosSchema } from "@/lib/validacao/esquemas";
++import { registrarErro } from "@/lib/erros";
++
++/** Limite de segurança para a exportação (a tela mostra até 100). */
++const LIMITE_EXPORTACAO = 5000;
++
++/**
++ * GET /chamados/exportar?status=...&prioridade=...&equipamento=...&de=...&ate=...
++ * Exporta em CSV os chamados com os mesmos filtros da lista. As permissões
++ * são as do usuário logado (RLS): o solicitante exporta só os próprios chamados.
++ */
++export async function GET(request: Request) {
++  await exigirUsuario();
++  const parametros = Object.fromEntries(new URL(request.url).searchParams);
++  const filtros = filtrosChamadosSchema.parse(parametros);
++
++  const { data, error } = await consultarChamados(filtros, LIMITE_EXPORTACAO);
++  if (error) {
++    registrarErro("exportarChamados", error);
++    return new Response("Não foi possível gerar o arquivo. Tente novamente.", { status: 500 });
++  }
++
++  const hoje = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }); // AAAA-MM-DD
++  return new Response(csvDeChamados(data ?? []), {
++    headers: {
++      "Content-Type": "text/csv; charset=utf-8",
++      "Content-Disposition": `attachment; filename="chamados-${hoje}.csv"`,
++      "Cache-Control": "no-store",
++    },
++  });
++}
+diff --git a/app/(sistema)/chamados/page.tsx b/app/(sistema)/chamados/page.tsx
+index a9c1c34..88398cc 100644
+--- a/app/(sistema)/chamados/page.tsx
++++ b/app/(sistema)/chamados/page.tsx
+@@ -1,12 +1,11 @@
+ import type { Metadata } from "next";
+ import Link from "next/link";
+ import { exigirUsuario } from "@/lib/auth";
+-import { createClient } from "@/lib/supabase/server";
+-import { listarEquipamentosParaSelecao } from "@/lib/consultas";
++import { consultarChamados, listarEquipamentosParaSelecao } from "@/lib/consultas";
+ import { ehEquipe } from "@/lib/regras/permissoes";
+ import { filtrosChamadosSchema } from "@/lib/validacao/esquemas";
+ import { PRIORIDADES, ROTULO_PRIORIDADE, ROTULO_STATUS_CHAMADO, STATUS_CHAMADO } from "@/lib/dominio/rotulos";
+-import { codigoChamado, formatarDataHora, intervaloDoPeriodo } from "@/lib/formatacao";
++import { codigoChamado, formatarDataHora } from "@/lib/formatacao";
+ import { registrarErro } from "@/lib/erros";
+ import { CabecalhoPagina } from "@/components/ui/CabecalhoPagina";
+ import { EstadoVazio } from "@/components/ui/EstadoVazio";
+@@ -22,25 +21,9 @@ export default async function ListaChamados({ searchParams }: PageProps<"/chamad
+   const usuario = await exigirUsuario();
+   const params = await searchParams;
+   const filtros = filtrosChamadosSchema.parse(params);
+-  const { inicio, fimExclusivo } = intervaloDoPeriodo(filtros.de, filtros.ate);
+-
+-  const supabase = await createClient();
+-  let consulta = supabase
+-    .from("chamados")
+-    .select(
+-      "id, titulo, status, prioridade, criado_em, equipamento:equipamentos(id, codigo, nome), solicitante:perfis!chamados_solicitante_id_fkey(nome), tecnico:perfis!chamados_tecnico_id_fkey(nome)",
+-      { count: "exact" },
+-    )
+-    .order("criado_em", { ascending: false })
+-    .limit(LIMITE);
+-  if (filtros.status) consulta = consulta.eq("status", filtros.status);
+-  if (filtros.prioridade) consulta = consulta.eq("prioridade", filtros.prioridade);
+-  if (filtros.equipamento) consulta = consulta.eq("equipamento_id", filtros.equipamento);
+-  if (inicio) consulta = consulta.gte("criado_em", inicio);
+-  if (fimExclusivo) consulta = consulta.lt("criado_em", fimExclusivo);
+ 
+   const [{ data: chamados, count, error }, equipamentos] = await Promise.all([
+-    consulta,
++    consultarChamados(filtros, LIMITE),
+     listarEquipamentosParaSelecao(),
+   ]);
+   if (error) {
+@@ -50,6 +33,10 @@ export default async function ListaChamados({ searchParams }: PageProps<"/chamad
+   const lista = chamados ?? [];
+   const filtrando = Boolean(filtros.status || filtros.prioridade || filtros.equipamento || filtros.de || filtros.ate);
+   const equipe = ehEquipe(usuario.papel);
++  // Mesmos filtros da tela, repassados para a exportação.
++  const consultaAtual = new URLSearchParams(
++    Object.entries(filtros).flatMap(([chave, valor]) => (valor === undefined ? [] : [[chave, String(valor)]])),
++  ).toString();
+ 
+   return (
+     <>
+@@ -58,9 +45,18 @@ export default async function ListaChamados({ searchParams }: PageProps<"/chamad
+         titulo={equipe ? "Chamados" : "Meus chamados"}
+         descricao={equipe ? "Todos os chamados registrados." : "Chamados abertos por você."}
+         acoes={
+-          <Link href="/chamados/novo" className={botao.primario}>
+-            Abrir chamado
+-          </Link>
++          <>
++            <a
++              href={`/chamados/exportar${consultaAtual ? `?${consultaAtual}` : ""}`}
++              className={botao.secundario}
++              download
++            >
++              Exportar CSV
++            </a>
++            <Link href="/chamados/novo" className={botao.primario}>
++              Abrir chamado
++            </Link>
++          </>
+         }
+       />
+ 
+diff --git a/lib/consultas.ts b/lib/consultas.ts
+index 7a57091..06e16f4 100644
+--- a/lib/consultas.ts
++++ b/lib/consultas.ts
+@@ -5,8 +5,34 @@
+  */
+ import { createClient } from "@/lib/supabase/server";
+ import { registrarErro } from "@/lib/erros";
++import { intervaloDoPeriodo } from "@/lib/formatacao";
++import type { FiltrosChamados } from "@/lib/validacao/esquemas";
+ import type { ItemHistorico } from "@/components/Historico";
+ 
++/**
++ * Chamados com os filtros da lista (status, prioridade, equipamento e período),
++ * do mais recente para o mais antigo. Usada pela tela e pela exportação CSV,
++ * para que as duas mostrem exatamente o mesmo conjunto (RLS incluso).
++ */
++export async function consultarChamados(filtros: FiltrosChamados, limite: number) {
++  const supabase = await createClient();
++  const { inicio, fimExclusivo } = intervaloDoPeriodo(filtros.de, filtros.ate);
++  let consulta = supabase
++    .from("chamados")
++    .select(
++      "id, titulo, status, prioridade, categoria, criado_em, resolvido_em, encerrado_em, equipamento:equipamentos(id, codigo, nome), solicitante:perfis!chamados_solicitante_id_fkey(nome), tecnico:perfis!chamados_tecnico_id_fkey(nome)",
++      { count: "exact" },
++    )
++    .order("criado_em", { ascending: false })
++    .limit(limite);
++  if (filtros.status) consulta = consulta.eq("status", filtros.status);
++  if (filtros.prioridade) consulta = consulta.eq("prioridade", filtros.prioridade);
++  if (filtros.equipamento) consulta = consulta.eq("equipamento_id", filtros.equipamento);
++  if (inicio) consulta = consulta.gte("criado_em", inicio);
++  if (fimExclusivo) consulta = consulta.lt("criado_em", fimExclusivo);
++  return consulta;
++}
++
+ type Alvo = { equipamento_id: number } | { chamado_id: number } | { ordem_id: number };
+ 
+ export async function buscarHistorico(alvo: Alvo): Promise<ItemHistorico[]> {
+diff --git a/lib/relatorios/csv.ts b/lib/relatorios/csv.ts
+new file mode 100644
+index 0000000..edaeccf
+--- /dev/null
++++ b/lib/relatorios/csv.ts
+@@ -0,0 +1,76 @@
++/**
++ * Geração de CSV para abrir em planilhas (Excel, LibreOffice, Planilhas Google)
++ * com acentuação correta: UTF-8 com BOM, separador ";" (padrão pt-BR) e
++ * quebras de linha CRLF.
++ */
++import {
++  ROTULO_CATEGORIA_CHAMADO,
++  ROTULO_PRIORIDADE,
++  ROTULO_STATUS_CHAMADO,
++} from "@/lib/dominio/rotulos";
++import { codigoChamado, formatarDataHora } from "@/lib/formatacao";
++import type { CategoriaChamado, PrioridadeChamado, StatusChamado } from "@/types/dominio";
++
++const BOM = "﻿";
++const SEPARADOR = ";";
++
++/** Coloca o valor entre aspas quando necessário e duplica aspas internas. */
++export function escaparCelula(valor: string): string {
++  // Impede que a planilha interprete o texto como fórmula (=, +, -, @).
++  const seguro = /^[=+\-@]/.test(valor) ? `'${valor}` : valor;
++  return /[";\r\n]/.test(seguro) ? `"${seguro.replaceAll('"', '""')}"` : seguro;
++}
++
++export function gerarCsv(cabecalho: string[], linhas: string[][]): string {
++  const todas = [cabecalho, ...linhas].map((l) => l.map(escaparCelula).join(SEPARADOR));
++  return BOM + todas.join("\r\n") + "\r\n";
++}
++
++export type ChamadoExportavel = {
++  id: number;
++  titulo: string;
++  status: StatusChamado;
++  prioridade: PrioridadeChamado;
++  categoria: CategoriaChamado;
++  criado_em: string;
++  resolvido_em: string | null;
++  encerrado_em: string | null;
++  equipamento: { codigo: string; nome: string } | null;
++  solicitante: { nome: string } | null;
++  tecnico: { nome: string } | null;
++};
++
++export const CABECALHO_CHAMADOS = [
++  "Código",
++  "Título",
++  "Equipamento",
++  "Status",
++  "Prioridade",
++  "Categoria",
++  "Solicitante",
++  "Técnico",
++  "Aberto em",
++  "Resolvido em",
++  "Encerrado em",
++];
++
++const dataOuVazio = (valor: string | null) => (valor ? formatarDataHora(valor) : "");
++
++export function csvDeChamados(chamados: ChamadoExportavel[]): string {
++  return gerarCsv(
++    CABECALHO_CHAMADOS,
++    chamados.map((c) => [
++      codigoChamado(c.id),
++      c.titulo,
++      c.equipamento ? `${c.equipamento.codigo} — ${c.equipamento.nome}` : "",
++      ROTULO_STATUS_CHAMADO[c.status],
++      ROTULO_PRIORIDADE[c.prioridade],
++      ROTULO_CATEGORIA_CHAMADO[c.categoria],
++      c.solicitante?.nome ?? "",
++      c.tecnico?.nome ?? "",
++      dataOuVazio(c.criado_em),
++      dataOuVazio(c.resolvido_em),
++      dataOuVazio(c.encerrado_em),
++    ]),
++  );
++}
+diff --git a/tests/e2e/fluxo-chamado.spec.ts b/tests/e2e/fluxo-chamado.spec.ts
+index b740441..ce1d1ba 100644
+--- a/tests/e2e/fluxo-chamado.spec.ts
++++ b/tests/e2e/fluxo-chamado.spec.ts
+@@ -1,3 +1,4 @@
++import { readFile } from "node:fs/promises";
+ import { expect, test, type Page } from "@playwright/test";
+ import { entrar, sair } from "./apoio";
+ 
+@@ -124,6 +125,29 @@ test("equipamento: validação de código e cadastro", async ({ page }) => {
+   await expect(page.getByRole("heading", { level: 1 })).toContainText(codigo);
+ });
+ 
++test("OC-03: exportar a lista filtrada em CSV respeitando permissões", async ({ page }) => {
++  await entrar(page, "tecnico1@example.com");
++  await page.goto("/chamados?status=em_atendimento");
++  const [download] = await Promise.all([
++    page.waitForEvent("download"),
++    page.getByRole("link", { name: "Exportar CSV" }).click(),
++  ]);
++  expect(download.suggestedFilename()).toMatch(/^chamados-\d{4}-\d{2}-\d{2}\.csv$/);
++  const texto = await readFile(await download.path(), "utf8");
++  const linhas = texto.replace("\uFEFF", "").trim().split("\r\n");
++  expect(linhas[0]).toContain("Código;Título;Equipamento;Status");
++  expect(linhas.length).toBeGreaterThan(1);
++  expect(linhas.slice(1).every((l) => l.includes(";Em atendimento;"))).toBe(true);
++  await sair(page);
++
++  // Solicitante exporta somente os próprios chamados
++  await entrar(page, "solicitante1@example.com");
++  const resposta = await page.request.get("/chamados/exportar");
++  const csvSolicitante = (await resposta.text()).replace("\uFEFF", "").trim().split("\r\n").slice(1);
++  expect(csvSolicitante.length).toBeGreaterThan(0);
++  expect(csvSolicitante.every((l) => l.includes(";Daniela Souza;"))).toBe(true);
++});
++
+ test("triagem: remover o técnico de chamado em atendimento mostra mensagem clara", async ({ page }) => {
+   await entrar(page, "tecnico1@example.com");
+   await page.goto("/chamados/2"); // "Ar-condicionado pingando água", em atendimento no seed
+diff --git a/tests/unit/csv.test.ts b/tests/unit/csv.test.ts
+new file mode 100644
+index 0000000..c6d7e09
+--- /dev/null
++++ b/tests/unit/csv.test.ts
+@@ -0,0 +1,44 @@
++import { describe, expect, it } from "vitest";
++import { CABECALHO_CHAMADOS, csvDeChamados, escaparCelula, gerarCsv } from "@/lib/relatorios/csv";
++
++describe("CSV (OC-03 — exportação de chamados)", () => {
++  it("começa com BOM UTF-8 e usa ';' e CRLF", () => {
++    const csv = gerarCsv(["A", "B"], [["1", "2"]]);
++    expect(csv.startsWith("﻿")).toBe(true);
++    expect(csv).toBe("﻿A;B\r\n1;2\r\n");
++  });
++
++  it("protege separador, aspas e quebras de linha", () => {
++    expect(escaparCelula("texto; com separador")).toBe('"texto; com separador"');
++    expect(escaparCelula('diz "olá"')).toBe('"diz ""olá"""');
++    expect(escaparCelula("linha 1\nlinha 2")).toBe('"linha 1\nlinha 2"');
++  });
++
++  it("neutraliza conteúdo que a planilha executaria como fórmula", () => {
++    expect(escaparCelula("=SOMA(A1:A2)")).toBe("'=SOMA(A1:A2)");
++    expect(escaparCelula("@usuario")).toBe("'@usuario");
++  });
++
++  it("gera uma linha por chamado com rótulos e datas em pt-BR", () => {
++    const csv = csvDeChamados([
++      {
++        id: 7,
++        titulo: "Projetor sem imagem",
++        status: "em_atendimento",
++        prioridade: "critica",
++        categoria: "falha",
++        criado_em: "2026-10-05T13:30:00Z",
++        resolvido_em: null,
++        encerrado_em: null,
++        equipamento: { codigo: "INF-0002", nome: "Projetor" },
++        solicitante: { nome: "Eduardo Lima" },
++        tecnico: null,
++      },
++    ]);
++    const [cabecalho, linha] = csv.replace("﻿", "").trim().split("\r\n");
++    expect(cabecalho).toBe(CABECALHO_CHAMADOS.join(";"));
++    expect(linha).toBe(
++      "CH-0007;Projetor sem imagem;INF-0002 — Projetor;Em atendimento;Crítica;Falha;Eduardo Lima;;05/10/2026 às 10:30;;",
++    );
++  });
++});

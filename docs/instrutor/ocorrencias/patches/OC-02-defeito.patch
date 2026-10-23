@@ -1,0 +1,100 @@
+diff --git a/lib/regras/ordens.ts b/lib/regras/ordens.ts
+index 91c3926..f5606f0 100644
+--- a/lib/regras/ordens.ts
++++ b/lib/regras/ordens.ts
+@@ -17,6 +17,7 @@ export type TransicaoOrdem = {
+ /** RN-OM-01 — Transições permitidas. Concluída e cancelada são finais. */
+ export const TRANSICOES_ORDEM: readonly TransicaoOrdem[] = [
+   { de: "planejada", para: "em_execucao", exigeObservacao: false, acao: "Iniciar execução" },
++  { de: "planejada", para: "concluida", exigeObservacao: false, acao: "Concluir ordem" },
+   { de: "planejada", para: "cancelada", exigeObservacao: true, acao: "Cancelar ordem" },
+   { de: "em_execucao", para: "concluida", exigeObservacao: false, acao: "Concluir ordem" },
+   { de: "em_execucao", para: "cancelada", exigeObservacao: true, acao: "Cancelar ordem" },
+diff --git a/supabase/migrations/20261023120000_tipos_e_tabelas.sql b/supabase/migrations/20261023120000_tipos_e_tabelas.sql
+index a509e38..72983f8 100644
+--- a/supabase/migrations/20261023120000_tipos_e_tabelas.sql
++++ b/supabase/migrations/20261023120000_tipos_e_tabelas.sql
+@@ -166,7 +166,6 @@ create table public.ordens_manutencao (
+       char_length(btrim(diagnostico)) > 0
+       and char_length(btrim(atividades_executadas)) > 0
+       and resultado is not null
+-      and iniciada_em is not null
+       and concluida_em is not null
+     )
+   ),
+diff --git a/supabase/migrations/20261023120100_funcoes_e_gatilhos.sql b/supabase/migrations/20261023120100_funcoes_e_gatilhos.sql
+index 7c9bbff..aa137cd 100644
+--- a/supabase/migrations/20261023120100_funcoes_e_gatilhos.sql
++++ b/supabase/migrations/20261023120100_funcoes_e_gatilhos.sql
+@@ -152,7 +152,7 @@ immutable
+ set search_path = ''
+ as $$
+   select case
+-    when de = 'planejada'   and para in ('em_execucao', 'cancelada') then true
++    when de = 'planejada'   and para in ('em_execucao', 'concluida', 'cancelada') then true
+     when de = 'em_execucao' and para in ('concluida', 'cancelada')   then true
+     else false
+   end;
+diff --git a/supabase/tests/03_ordens.test.sql b/supabase/tests/03_ordens.test.sql
+index 15e7b14..2768d25 100644
+--- a/supabase/tests/03_ordens.test.sql
++++ b/supabase/tests/03_ordens.test.sql
+@@ -1,7 +1,7 @@
+ -- Testes de ordens de manutenção: criação, transições, integridade e efeito no equipamento.
+ begin;
+ create extension if not exists pgtap with schema extensions;
+-select plan(18);
++select plan(17);
+ 
+ insert into auth.users (id, email, raw_user_meta_data) values
+   ('d0000000-0000-4000-8000-000000000001', 'om.tecnico@example.com', '{"nome":"Técnico OM"}'),
+@@ -58,9 +58,6 @@ select throws_ok(
+   $$insert into public.ordens_manutencao (chamado_id, tipo, responsavel_id)
+     values (pg_temp.ch(), 'preventiva', 'd0000000-0000-4000-8000-000000000001')$$,
+   '23505', null, 'só pode haver uma ordem ativa por chamado');
+-select throws_like(
+-  $$select public.alterar_status_ordem(pg_temp.om(), 'concluida')$$,
+-  '%Transição de status da ordem inválida: Planejada → Concluída%', 'ordem planejada não pode ser concluída sem execução');
+ 
+ select lives_ok($$select public.alterar_status_ordem(pg_temp.om(), 'em_execucao')$$, 'planejada → em execução');
+ select isnt((select iniciada_em from public.ordens_manutencao where id = pg_temp.om()), null, 'data de início registrada');
+diff --git a/tests/integration/fluxo-atendimento.test.ts b/tests/integration/fluxo-atendimento.test.ts
+index 77a2c8c..d212ce0 100644
+--- a/tests/integration/fluxo-atendimento.test.ts
++++ b/tests/integration/fluxo-atendimento.test.ts
+@@ -59,10 +59,6 @@ describe("fluxo de atendimento ponta a ponta", () => {
+     expect(ordem.error).toBeNull();
+     const ordemId = ordem.data!.id;
+ 
+-    // Planejada → concluída é proibido
+-    const pulo = await tecnico.cliente.rpc("alterar_status_ordem", { p_ordem_id: ordemId, p_status: "concluida" });
+-    expect(pulo.error?.message).toMatch(/Planejada → Concluída/);
+-
+     expect((await tecnico.cliente.rpc("alterar_status_ordem", { p_ordem_id: ordemId, p_status: "em_execucao" })).error).toBeNull();
+     const emManutencao = await tecnico.cliente.from("equipamentos").select("estado").eq("id", equipamento!.id).single();
+     expect(emManutencao.data!.estado).toBe("em_manutencao");
+diff --git a/tests/unit/regras-ordens.test.ts b/tests/unit/regras-ordens.test.ts
+index eb1a63a..bc8921a 100644
+--- a/tests/unit/regras-ordens.test.ts
++++ b/tests/unit/regras-ordens.test.ts
+@@ -3,7 +3,6 @@ import {
+   ordemFinalizada,
+   pendenciasConclusao,
+   TRANSICOES_ORDEM,
+-  transicoesOrdemDisponiveis,
+   validarTransicaoOrdem,
+ } from "@/lib/regras/ordens";
+ 
+@@ -18,12 +17,6 @@ describe("RN-OM-01 — transições da ordem de manutenção", () => {
+     expect(TRANSICOES_ORDEM.filter((t) => ordemFinalizada(t.de))).toHaveLength(0);
+   });
+ 
+-  it("ordem planejada NÃO pode ser concluída sem passar por execução", () => {
+-    const r = validarTransicaoOrdem({ de: "planejada", para: "concluida", ordem: completa });
+-    expect(r).toEqual({ ok: false, motivo: "Transição de status da ordem inválida: Planejada → Concluída." });
+-    expect(transicoesOrdemDisponiveis("planejada").map((t) => t.para)).toEqual(["em_execucao", "cancelada"]);
+-  });
+-
+   it("em execução → concluída quando o registro está completo", () => {
+     expect(validarTransicaoOrdem({ de: "em_execucao", para: "concluida", ordem: completa })).toEqual({ ok: true });
+   });
