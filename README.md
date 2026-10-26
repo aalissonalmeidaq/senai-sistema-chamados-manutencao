@@ -13,6 +13,30 @@ três etapas profissionais:
 > **Ambiente didático.** Todos os nomes, equipamentos e usuários são fictícios. Não cadastre dados reais
 > e não use este sistema para controlar equipamentos ou instalações de verdade.
 
+## Acesso rápido
+
+Com o ambiente pronto (`npm run setup:local` e `npm run dev`), abra <http://localhost:3000> e entre com um
+dos usuários de teste. **Senha de todos: `Senha@123`**
+
+| Papel | E-mail | Nome |
+| --- | --- | --- |
+| Administrador | `admin@example.com` | Alex Moreira |
+| Técnico | `tecnico1@example.com` | Bianca Lopes |
+| Técnico | `tecnico2@example.com` | Caio Ferreira |
+| Solicitante | `solicitante1@example.com` | Daniela Souza |
+| Solicitante | `solicitante2@example.com` | Eduardo Lima |
+| Solicitante | `solicitante3@example.com` | Fernanda Rocha |
+
+Essas contas são **fictícias**, existem só no banco local e são recriadas a cada `npm run db:reset`.
+Não use essas senhas em nenhum ambiente publicado (veja o guia de
+[implantação demonstrativa](docs/aluno/07-implantacao-demonstrativa.md)).
+
+| Serviço | Endereço |
+| --- | --- |
+| Aplicação | <http://localhost:3000> |
+| Supabase Studio (banco) | <http://127.0.0.1:55323> |
+| Caixa de e-mail local (Mailpit) | <http://127.0.0.1:55324> |
+
 ## Sumário
 
 1. [Requisitos da máquina](#1-requisitos-da-máquina)
